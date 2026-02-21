@@ -32,7 +32,7 @@ public class SecurityConfiguration {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .cors(Customizer.withDefaults())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Aseguramos que use nuestra config
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**", "/h2-console/**", "/chat/**", "/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -50,11 +50,17 @@ public class SecurityConfiguration {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // 👇 ACÁ ESTÁ EL CAMBIO PARA QUE ACEPTE CONEXIONES DESDE INTERNET (VERCEL/RENDER)
-        configuration.setAllowedOriginPatterns(List.of("*")); 
+        // 1. Agregamos las URLs de Vercel y Localhost por las dudas
+        configuration.setAllowedOrigins(List.of(
+            "https://turnos-frontend-khaki.vercel.app", 
+            "http://localhost:5173"
+        )); 
         
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        // 2. Permitimos todos los métodos y headers
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
+        
+        // 3. Importante para que el JWT pase de un lado al otro
         configuration.setAllowCredentials(true);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
