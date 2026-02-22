@@ -43,13 +43,15 @@ public class RecordatorioService {
             return;
         }
 
-        // 3. Mandamos los mails a cada paciente
+        // 3. Imprimimos en consola pero NO mandamos el mail por ahora
         for (Turno turno : turnosManana) {
             if (turno.getPacienteUsername() != null && !turno.getPacienteUsername().isEmpty() && turno.getPacienteUsername().contains("@")) {
                 
                 String emailPaciente = turno.getPacienteUsername();
-                String asunto = "⏰ Recordatorio de Turno - Clínica Integral";
+                System.out.println("🤖 [CRON SIMULADO] Se enviaría un recordatorio a: " + emailPaciente + " por su turno con el Dr. " + turno.getNombreMedico());
                 
+                /* 👇 EMAIL DESACTIVADO TEMPORALMENTE
+                String asunto = "⏰ Recordatorio de Turno - Clínica Integral";
                 String horaTurno = turno.getFechaHora().toLocalTime().toString();
                 String mensaje = "Hola " + turno.getCliente() + ",\n\n"
                         + "Te recordamos que tenés un turno mañana (" + manana + ") a las " + horaTurno + " hs "
@@ -65,6 +67,7 @@ public class RecordatorioService {
                 } catch (Exception e) {
                     System.err.println("❌ Error enviando correo a " + emailPaciente + ": " + e.getMessage());
                 }
+                */
             }
         }
     }

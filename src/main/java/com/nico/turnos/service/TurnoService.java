@@ -45,7 +45,6 @@ public class TurnoService {
         if (usuario.getRol() == Rol.ADMIN) {
             turnos = turnoRepository.findAll();
         } else if (usuario.getRol() == Rol.MEDICO) {
-            // Se filtran los turnos por el ID único del médico logueado
             turnos = turnoRepository.findByMedicoId(usuario.getId());
         } else {
             turnos = turnoRepository.findByPacienteUsername(username);
@@ -62,38 +61,31 @@ public class TurnoService {
         Usuario paciente = usuarioRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Paciente no encontrado"));
 
-        // VALIDACIÓN DE SEGURIDAD: Solo pacientes crean turnos
         if (paciente.getRol() != Rol.PACIENTE) {
             throw new RuntimeException("Solo los pacientes pueden reservar turnos.");
         }
 
-        // Validar que el horario esté entre 08:00 y 18:00
         validarHorarioNegocio(request.getFechaHora());
 
-        // Validar que el médico no tenga otro turno en ese mismo momento
         if (turnoRepository.existsByMedicoIdAndFechaHora(request.getMedicoId(), request.getFechaHora())) {
             throw new TurnoConflictException("Este médico ya tiene un turno a esa hora.");
         }
 
-        // Buscamos al médico en la tabla de usuarios para obtener sus datos reales
         Usuario medico = usuarioRepository.findById(request.getMedicoId())
                 .orElseThrow(() -> new RuntimeException("Médico no encontrado"));
 
         Turno turno = turnoMapper.toEntity(request);
         
-        // Seteamos los datos del paciente
         turno.setCliente(paciente.getNombreCompleto());
         turno.setPacienteUsername(paciente.getUsername());
-        
-        // Seteamos los datos del médico (incluyendo la especialidad para las gráficas)
         turno.setMedicoId(medico.getId()); 
         turno.setNombreMedico(medico.getNombreCompleto());
-        turno.setEspecialidad(medico.getEspecialidad()); // <--- CRÍTICO PARA EL DASHBOARD
+        turno.setEspecialidad(medico.getEspecialidad()); 
 
         Turno turnoGuardado = turnoRepository.save(turno);
         
-        // Enviamos el email de confirmación
-        enviarEmailConfirmacion(paciente.getUsername(), turnoGuardado);
+        // 👇 EMAIL DESACTIVADO TEMPORALMENTE PARA EVITAR TIMEOUT EN RENDER
+        // enviarEmailConfirmacion(paciente.getUsername(), turnoGuardado);
 
         return turnoMapper.toResponse(turnoGuardado);
     }
@@ -103,7 +95,6 @@ public class TurnoService {
         Turno turnoExistente = turnoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Turno no encontrado con id: " + id));
 
-        // Si se cambia la fecha o el médico, validamos disponibilidad
         if (request.getFechaHora() != null && !turnoExistente.getFechaHora().equals(request.getFechaHora())) {
              validarHorarioNegocio(request.getFechaHora());
              
@@ -126,17 +117,13 @@ public class TurnoService {
         turnoRepository.deleteById(id);
     }
 
-    // --- MÉTODOS PRIVADOS AUXILIARES ---
-
     private void validarHorarioNegocio(java.time.LocalDateTime fecha) {
         if (fecha == null) return;
         
-        // No se atiende los domingos
         if (fecha.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
             throw new RuntimeException("La clínica está cerrada los domingos.");
         }
         
-        // Rango de 08:00 a 18:00
         int hora = fecha.getHour();
         if (hora < 8 || hora > 18) {
             throw new RuntimeException("El horario de atención es de 08:00 a 18:00.");

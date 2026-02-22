@@ -4,7 +4,7 @@ import com.nico.turnos.dto.PasswordUpdateRequest;
 import com.nico.turnos.entity.Rol;
 import com.nico.turnos.entity.Usuario;
 import com.nico.turnos.repository.UsuarioRepository;
-import com.nico.turnos.service.ArchivoService; // <-- NUEVA IMPORTACIÓN
+import com.nico.turnos.service.ArchivoService; 
 import com.nico.turnos.service.EmailService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,15 +15,14 @@ import java.util.Random;
 
 @RestController
 @RequestMapping("/usuario")
-@CrossOrigin(origins = "http://localhost:5173")
+// Eliminamos @CrossOrigin porque lo maneja SecurityConfiguration
 public class UsuarioController {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final ArchivoService archivoService; // <-- NUEVA DEPENDENCIA
+    private final ArchivoService archivoService; 
 
-    // 👇 Inyectamos el ArchivoService en el constructor
     public UsuarioController(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, EmailService emailService, ArchivoService archivoService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
@@ -48,7 +47,6 @@ public class UsuarioController {
         usuario.setRol(datos.getRol());
         usuario.setEspecialidad(datos.getEspecialidad());
         
-        // FORZAR HABILITACIÓN PARA MÉDICOS Y ADMINS
         if (datos.getRol() == Rol.MEDICO || datos.getRol() == Rol.ADMIN) {
             usuario.setEnabled(true);
         }
@@ -83,11 +81,17 @@ public class UsuarioController {
     public ResponseEntity<?> solicitarCodigoPassword() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuario = usuarioRepository.findByUsername(username).orElseThrow();
-        String codigo = String.format("%06d", new Random().nextInt(999999));
+        
+        // 👇 COMO DESACTIVAMOS EL MAIL, FIJAMOS EL CÓDIGO EN "123456" PARA QUE EL PACIENTE LO SEPA
+        String codigo = "123456"; 
+        
         usuario.setVerificationCode(codigo);
         usuarioRepository.save(usuario);
-        emailService.sendEmail(usuario.getUsername(), "Código Seguridad", "Tu código es: " + codigo);
-        return ResponseEntity.ok("Código enviado.");
+        
+        // 👇 EMAIL DESACTIVADO TEMPORALMENTE
+        // emailService.sendEmail(usuario.getUsername(), "Código Seguridad", "Tu código es: " + codigo);
+        
+        return ResponseEntity.ok("Función de email desactivada. Tu código de prueba es: 123456");
     }
 
     @PutMapping("/perfil/password/confirmar")
@@ -106,12 +110,11 @@ public class UsuarioController {
         return ResponseEntity.ok("Contraseña actualizada.");
     }
 
-    // 👇 NUEVO ENDPOINT DE PAGINACIÓN CORREGIDO
     @GetMapping("/paginados")
     public org.springframework.http.ResponseEntity<org.springframework.data.domain.Page<Usuario>> getUsuariosPaginados(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,
-            @RequestParam(required = false) Rol rol) { // <-- Ahora usa tu Enum Rol
+            @RequestParam(required = false) Rol rol) { 
         
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         
@@ -125,22 +128,17 @@ public class UsuarioController {
         return org.springframework.http.ResponseEntity.ok(usuariosPage);
     }
 
-    // 👇 NUEVO ENDPOINT PARA RECIBIR LA FOTO DESDE REACT
     @PostMapping("/perfil/foto")
     public org.springframework.http.ResponseEntity<java.util.Map<String, String>> subirFotoPerfil(
             @RequestParam("archivo") org.springframework.web.multipart.MultipartFile archivo,
             java.security.Principal principal) {
         try {
-            // 1. Buscamos quién es el usuario logueado
             String username = principal.getName();
             Usuario usuario = usuarioRepository.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            // 2. Guardamos el archivo físico en la compu
             String nombreArchivo = archivoService.guardarArchivo(archivo);
-
-            // 3. Le guardamos la URL al usuario (ej: http://localhost:8080/uploads/mifoto.jpg)
-            String urlFoto = "http://localhost:8080/uploads/" + nombreArchivo;
+            String urlFoto = "https://turnos-backend-ns8s.onrender.com/uploads/" + nombreArchivo;
             usuario.setFotoPerfil(urlFoto);
             usuarioRepository.save(usuario);
 
