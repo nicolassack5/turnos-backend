@@ -1,38 +1,53 @@
 package com.nico.turnos.service;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    @Value("${BREVO_API_KEY}")
+    private String apiKey;
 
-    // Tomamos el email real desde tu application.properties / Render
-    @Value("${spring.mail.username}")
+    @Value("${BREVO_SENDER_EMAIL}")
     private String senderEmail;
 
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
+    private final RestClient restClient;
+
+    public EmailService(RestClient.Builder builder) {
+        this.restClient = builder.baseUrl("https://api.brevo.com/v3").build();
     }
 
     public void sendEmail(String to, String subject, String content) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            // Ahora usa tu email real de forma dinámica
-            message.setFrom("Clinica Integral <" + senderEmail + ">");
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(content);
-            
-            mailSender.send(message);
-            System.out.println("✅ ÉXITO: Email enviado correctamente a " + to);
-            
+            // Convertimos los saltos de línea a formato HTML para que se vea lindo
+            String htmlContent = "<p>" + content.replace("\n", "<br>") + "</p>";
+
+            Map<String, Object> requestBody = Map.of(
+                "sender", Map.of("name", "Clínica Integral", "email", senderEmail),
+                "to", List.of(Map.of("email", to)),
+                "subject", subject,
+                "htmlContent", htmlContent
+            );
+
+            restClient.post()
+                .uri("/smtp/email")
+                .header("api-key", apiKey)
+                .header("accept", "application/json")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestBody)
+                .retrieve()
+                .toBodilessEntity();
+
+            System.out.println("✅ ÉXITO: Email enviado a " + to + " vía Brevo API");
+
         } catch (Exception e) {
-            System.err.println("❌ ERROR FATAL AL ENVIAR EL EMAIL a " + to);
-            e.printStackTrace(); // Esto va a imprimir el error exacto en Render
+            System.err.println("❌ ERROR AL ENVIAR EMAIL a " + to + ": " + e.getMessage());
         }
     }
 }

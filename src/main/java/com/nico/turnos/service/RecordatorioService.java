@@ -21,21 +21,15 @@ public class RecordatorioService {
         this.emailService = emailService;
     }
 
-    // ⏰ SE EJECUTA TODOS LOS DÍAS A LAS 8:00 AM:
-    // @Scheduled(cron = "0 0 8 * * ?") 
-    
-    // 🛠️ MODO DE PRUEBA: Para probarlo AHORA MISMO, usa esta línea en vez de la de arriba.
-    // Esto hace que el robot se despierte CADA 1 MINUTO y mande los mails:
+    // Dejé el fixedRate a 1 minuto para que veas la magia funcionando ya mismo
     @Scheduled(fixedRate = 60000)
     public void enviarRecordatoriosDiarios() {
-        System.out.println("⏳ [CRON] Buscando turnos para enviar recordatorios de mañana...");
+        System.out.println("⏳ [CRON] Buscando turnos para enviar recordatorios...");
 
-        // 1. Calculamos el día de mañana (desde las 00:00 hasta las 23:59)
         LocalDate manana = LocalDate.now().plusDays(1);
         LocalDateTime inicioDia = manana.atStartOfDay();
         LocalDateTime finDia = manana.atTime(LocalTime.MAX);
 
-        // 2. Buscamos los turnos en la base de datos
         List<Turno> turnosManana = turnoRepository.findByFechaHoraBetween(inicioDia, finDia);
 
         if (turnosManana.isEmpty()) {
@@ -43,14 +37,10 @@ public class RecordatorioService {
             return;
         }
 
-        // 3. Imprimimos en consola pero NO mandamos el mail por ahora
         for (Turno turno : turnosManana) {
             if (turno.getPacienteUsername() != null && !turno.getPacienteUsername().isEmpty() && turno.getPacienteUsername().contains("@")) {
                 
                 String emailPaciente = turno.getPacienteUsername();
-                System.out.println("🤖 [CRON SIMULADO] Se enviaría un recordatorio a: " + emailPaciente + " por su turno con el Dr. " + turno.getNombreMedico());
-                
-                /* 👇 EMAIL DESACTIVADO TEMPORALMENTE
                 String asunto = "⏰ Recordatorio de Turno - Clínica Integral";
                 String horaTurno = turno.getFechaHora().toLocalTime().toString();
                 String mensaje = "Hola " + turno.getCliente() + ",\n\n"
@@ -62,12 +52,11 @@ public class RecordatorioService {
                         + "Saludos,\nTu Asistente Virtual de Clínica Integral.";
 
                 try {
+                    // Descomentado: ¡Ahora se envía de verdad usando Brevo!
                     emailService.sendEmail(emailPaciente, asunto, mensaje);
-                    System.out.println("✅ Recordatorio enviado con éxito a: " + emailPaciente);
                 } catch (Exception e) {
                     System.err.println("❌ Error enviando correo a " + emailPaciente + ": " + e.getMessage());
                 }
-                */
             }
         }
     }

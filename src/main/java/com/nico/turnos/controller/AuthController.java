@@ -20,7 +20,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
-// Eliminamos el @CrossOrigin con localhost porque ya lo maneja SecurityConfiguration
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -67,22 +66,21 @@ public class AuthController {
         user.setRol(request.getRol());
         user.setEspecialidad(request.getEspecialidad());
         
-        // 👇 CAMBIO 1: TODOS LOS USUARIOS NACEN ACTIVADOS PARA SALTEAR EL EMAIL
-        user.setEnabled(true); 
-        
         if (request.getRol() == Rol.PACIENTE) {
+            // El paciente nace apagado hasta que verifique su mail
+            user.setEnabled(false); 
             String token = UUID.randomUUID().toString();
             user.setVerificationCode(token);
             usuarioRepository.save(user);
 
-            // 👇 CAMBIO 2: APAGAMOS EL ENVÍO DE EMAIL
-            // String link = "https://turnos-frontend-khaki.vercel.app?verifyToken=" + token;
-            // emailService.sendEmail(request.getUsername(), "Verifica tu cuenta - Clínica Integral",
-            //        "Hola " + request.getNombreCompleto() + ",\n\nActiva tu cuenta aquí: " + link);
+            // Se envía el email con el link real a tu Vercel
+            String link = "https://turnos-frontend-khaki.vercel.app?verifyToken=" + token;
+            emailService.sendEmail(request.getUsername(), "Verifica tu cuenta - Clínica Integral",
+                    "Hola " + request.getNombreCompleto() + ",\n\nActiva tu cuenta de paciente ingresando a este enlace:\n\n" + link);
             
-            // Cambiamos el mensaje para que el usuario sepa que ya puede entrar
-            return ResponseEntity.ok("Registro exitoso. Ya puedes iniciar sesión.");
+            return ResponseEntity.ok("Registro exitoso. Revisa tu email para activar la cuenta.");
         } else {
+            user.setEnabled(true); 
             usuarioRepository.save(user);
             return ResponseEntity.ok("Usuario " + request.getRol() + " creado y activado correctamente.");
         }
@@ -117,11 +115,11 @@ public class AuthController {
         usuario.setResetTokenExpiry(LocalDateTime.now().plusHours(1));
         usuarioRepository.save(usuario);
 
-        // 👇 CAMBIO 3: APAGAMOS EL EMAIL DE RECUPERACIÓN PARA QUE NO COLAPSE
-        // String link = "https://turnos-frontend-khaki.vercel.app/?token=" + token;
-        // emailService.sendEmail(email, "Recuperar Contraseña", "Haz clic aquí: " + link);
+        // Envía el correo con el link de Vercel
+        String link = "https://turnos-frontend-khaki.vercel.app/?token=" + token;
+        emailService.sendEmail(email, "Recuperar Contraseña", "Para cambiar tu contraseña, haz clic en el siguiente enlace:\n\n" + link);
         
-        return ResponseEntity.ok("Función de email desactivada temporalmente.");
+        return ResponseEntity.ok("Enlace enviado al correo.");
     }
     
     @PostMapping("/reset-password")

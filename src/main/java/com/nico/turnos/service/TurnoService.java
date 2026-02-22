@@ -34,7 +34,6 @@ public class TurnoService {
         this.emailService = emailService;
     }
 
-    // --- LISTAR TURNOS ---
     public List<TurnoResponse> listar() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuario = usuarioRepository.findByUsername(username)
@@ -55,7 +54,6 @@ public class TurnoService {
                 .collect(Collectors.toList());
     }
 
-    // --- CREAR TURNO ---
     public TurnoResponse crear(TurnoRequest request) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario paciente = usuarioRepository.findByUsername(username)
@@ -84,13 +82,12 @@ public class TurnoService {
 
         Turno turnoGuardado = turnoRepository.save(turno);
         
-        // 👇 EMAIL DESACTIVADO TEMPORALMENTE PARA EVITAR TIMEOUT EN RENDER
-        // enviarEmailConfirmacion(paciente.getUsername(), turnoGuardado);
+        // Enviamos el email real de confirmación
+        enviarEmailConfirmacion(paciente.getUsername(), turnoGuardado);
 
         return turnoMapper.toResponse(turnoGuardado);
     }
 
-    // --- ACTUALIZAR TURNO ---
     public TurnoResponse actualizar(Long id, TurnoRequest request) {
         Turno turnoExistente = turnoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Turno no encontrado con id: " + id));
@@ -109,7 +106,6 @@ public class TurnoService {
         return turnoMapper.toResponse(turnoRepository.save(turnoExistente));
     }
 
-    // --- ELIMINAR ---
     public void eliminar(Long id) {
         if (!turnoRepository.existsById(id)) {
             throw new RuntimeException("Turno no encontrado");
@@ -139,14 +135,13 @@ public class TurnoService {
             String mensaje = String.format(
                 "Hola %s,\n\nTu turno ha sido reservado con éxito.\n\n" +
                 "📅 Fecha: %s\n⏰ Hora: %s\n👨‍⚕️ Médico: %s\n🏥 Motivo: %s\n\n" +
-                "Por favor, asiste puntual.\nSaludos, Clínica Integral.",
+                "Por favor, recuerda asistir 10 minutos antes.\nSaludos,\nClínica Integral.",
                 turno.getCliente(), fechaStr, horaStr, turno.getNombreMedico(), turno.getDescripcion()
             );
 
             emailService.sendEmail(emailDestino, asunto, mensaje);
-            System.out.println("📧 Email de confirmación enviado a: " + emailDestino);
         } catch (Exception e) {
-            System.err.println("Error enviando email: " + e.getMessage());
+            System.err.println("Error enviando email de confirmación: " + e.getMessage());
         }
     }
 }

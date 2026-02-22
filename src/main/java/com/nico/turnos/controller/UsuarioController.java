@@ -15,7 +15,6 @@ import java.util.Random;
 
 @RestController
 @RequestMapping("/usuario")
-// Eliminamos @CrossOrigin porque lo maneja SecurityConfiguration
 public class UsuarioController {
 
     private final UsuarioRepository usuarioRepository;
@@ -82,16 +81,16 @@ public class UsuarioController {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuario = usuarioRepository.findByUsername(username).orElseThrow();
         
-        // 👇 COMO DESACTIVAMOS EL MAIL, FIJAMOS EL CÓDIGO EN "123456" PARA QUE EL PACIENTE LO SEPA
-        String codigo = "123456"; 
-        
+        // Volvemos a generar el código de 6 dígitos real
+        String codigo = String.format("%06d", new Random().nextInt(999999));
         usuario.setVerificationCode(codigo);
         usuarioRepository.save(usuario);
         
-        // 👇 EMAIL DESACTIVADO TEMPORALMENTE
-        // emailService.sendEmail(usuario.getUsername(), "Código Seguridad", "Tu código es: " + codigo);
+        // Enviamos el correo de verdad
+        emailService.sendEmail(usuario.getUsername(), "Código de Seguridad - Clínica Integral", 
+            "Has solicitado cambiar tu contraseña.\n\nTu código de seguridad es: " + codigo + "\n\nSi no fuiste tú, ignora este mensaje.");
         
-        return ResponseEntity.ok("Función de email desactivada. Tu código de prueba es: 123456");
+        return ResponseEntity.ok("Código de seguridad enviado al correo.");
     }
 
     @PutMapping("/perfil/password/confirmar")
