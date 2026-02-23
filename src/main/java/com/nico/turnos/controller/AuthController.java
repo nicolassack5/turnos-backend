@@ -66,21 +66,21 @@ public class AuthController {
         user.setRol(request.getRol());
         user.setEspecialidad(request.getEspecialidad());
         
+        // Lo dejamos en true para que puedas entrar de una
+        user.setEnabled(true); 
+        
         if (request.getRol() == Rol.PACIENTE) {
-            // El paciente nace apagado hasta que verifique su mail
-            user.setEnabled(false); 
             String token = UUID.randomUUID().toString();
             user.setVerificationCode(token);
             usuarioRepository.save(user);
 
-            // Se envía el email con el link real a tu Vercel
+            // Manda un mail de bienvenida real
             String link = "https://turnos-frontend-khaki.vercel.app?verifyToken=" + token;
-            emailService.sendEmail(request.getUsername(), "Verifica tu cuenta - Clínica Integral",
-                    "Hola " + request.getNombreCompleto() + ",\n\nActiva tu cuenta de paciente ingresando a este enlace:\n\n" + link);
+            emailService.sendEmail(request.getUsername(), "Bienvenido a Clínica Integral",
+                    "Hola " + request.getNombreCompleto() + ",\n\nTu cuenta fue creada con éxito. Ya podés iniciar sesión o hacer clic aquí para verificar tu correo: " + link);
             
-            return ResponseEntity.ok("Registro exitoso. Revisa tu email para activar la cuenta.");
+            return ResponseEntity.ok("Registro exitoso. Ya puedes iniciar sesión.");
         } else {
-            user.setEnabled(true); 
             usuarioRepository.save(user);
             return ResponseEntity.ok("Usuario " + request.getRol() + " creado y activado correctamente.");
         }
@@ -115,7 +115,7 @@ public class AuthController {
         usuario.setResetTokenExpiry(LocalDateTime.now().plusHours(1));
         usuarioRepository.save(usuario);
 
-        // Envía el correo con el link de Vercel
+        // 👇 ENVÍO DE EMAIL DE RECUPERACIÓN ACTIVADO
         String link = "https://turnos-frontend-khaki.vercel.app/?token=" + token;
         emailService.sendEmail(email, "Recuperar Contraseña", "Para cambiar tu contraseña, haz clic en el siguiente enlace:\n\n" + link);
         

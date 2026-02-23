@@ -21,7 +21,8 @@ public class RecordatorioService {
         this.emailService = emailService;
     }
 
-    // Dejé el fixedRate a 1 minuto para que veas la magia funcionando ya mismo
+    // Ejecuta cada 1 minuto para que lo pruebes ahora mismo.
+    // Cuando termines de probar, podés cambiarlo a: @Scheduled(cron = "0 0 8 * * ?")
     @Scheduled(fixedRate = 60000)
     public void enviarRecordatoriosDiarios() {
         System.out.println("⏳ [CRON] Buscando turnos para enviar recordatorios...");
@@ -52,8 +53,9 @@ public class RecordatorioService {
                         + "Saludos,\nTu Asistente Virtual de Clínica Integral.";
 
                 try {
-                    // Descomentado: ¡Ahora se envía de verdad usando Brevo!
+                    // MANDA EL CORREO REAL
                     emailService.sendEmail(emailPaciente, asunto, mensaje);
+                    System.out.println("✅ Recordatorio enviado con éxito a: " + emailPaciente);
                 } catch (Exception e) {
                     System.err.println("❌ Error enviando correo a " + emailPaciente + ": " + e.getMessage());
                 }

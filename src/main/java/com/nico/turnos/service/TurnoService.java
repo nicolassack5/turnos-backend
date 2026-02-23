@@ -82,7 +82,7 @@ public class TurnoService {
 
         Turno turnoGuardado = turnoRepository.save(turno);
         
-        // Enviamos el email real de confirmación
+        // 👇 ACÁ VOLVIMOS A ACTIVAR EL EMAIL
         enviarEmailConfirmacion(paciente.getUsername(), turnoGuardado);
 
         return turnoMapper.toResponse(turnoGuardado);
@@ -140,6 +140,7 @@ public class TurnoService {
             );
 
             emailService.sendEmail(emailDestino, asunto, mensaje);
+            System.out.println("📧 Email de confirmación enviado a: " + emailDestino);
         } catch (Exception e) {
             System.err.println("Error enviando email de confirmación: " + e.getMessage());
         }
