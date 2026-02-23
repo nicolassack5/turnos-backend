@@ -82,7 +82,6 @@ public class TurnoService {
 
         Turno turnoGuardado = turnoRepository.save(turno);
         
-        // 👇 ACÁ VOLVIMOS A ACTIVAR EL EMAIL
         enviarEmailConfirmacion(paciente.getUsername(), turnoGuardado);
 
         return turnoMapper.toResponse(turnoGuardado);
@@ -106,11 +105,40 @@ public class TurnoService {
         return turnoMapper.toResponse(turnoRepository.save(turnoExistente));
     }
 
+    // ELIMINAR CON SEGURIDAD Y AVISO POR CORREO
     public void eliminar(Long id) {
-        if (!turnoRepository.existsById(id)) {
-            throw new RuntimeException("Turno no encontrado");
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuarioLogueado = usuarioRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        Turno turno = turnoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Turno no encontrado"));
+
+        if (usuarioLogueado.getRol() == Rol.PACIENTE) {
+            if (!turno.getPacienteUsername().equals(usuarioLogueado.getUsername())) {
+                throw new RuntimeException("No tienes permiso para cancelar el turno de otro paciente.");
+            }
         }
+
         turnoRepository.deleteById(id);
+
+        try {
+            String fechaStr = turno.getFechaHora().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            String horaStr = turno.getFechaHora().format(DateTimeFormatter.ofPattern("HH:mm"));
+            
+            String asunto = "Turno Cancelado - Clínica Integral";
+            String mensaje = String.format(
+                "Hola %s,\n\nTe confirmamos que tu turno ha sido CANCELADO exitosamente.\n\n" +
+                "Detalles del turno cancelado:\n📅 Fecha: %s\n⏰ Hora: %s\n👨‍⚕️ Médico: %s\n\n" +
+                "Esperamos verte pronto.\nSaludos,\nClínica Integral.",
+                turno.getCliente(), fechaStr, horaStr, turno.getNombreMedico()
+            );
+
+            emailService.sendEmail(turno.getPacienteUsername(), asunto, mensaje);
+            System.out.println("🗑️ Turno cancelado y email enviado a: " + turno.getPacienteUsername());
+        } catch (Exception e) {
+            System.err.println("Error enviando email de cancelación: " + e.getMessage());
+        }
     }
 
     private void validarHorarioNegocio(java.time.LocalDateTime fecha) {
@@ -140,7 +168,6 @@ public class TurnoService {
             );
 
             emailService.sendEmail(emailDestino, asunto, mensaje);
-            System.out.println("📧 Email de confirmación enviado a: " + emailDestino);
         } catch (Exception e) {
             System.err.println("Error enviando email de confirmación: " + e.getMessage());
         }

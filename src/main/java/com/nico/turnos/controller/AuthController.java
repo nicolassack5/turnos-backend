@@ -43,7 +43,7 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
             );
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Credenciales incorrectas o cuenta no verificada.");
+            return ResponseEntity.badRequest().body("Credenciales incorrectas o cuenta no verificada. Revisa tu email.");
         }
 
         Usuario user = usuarioRepository.findByUsername(request.getUsername()).orElseThrow();
@@ -66,21 +66,20 @@ public class AuthController {
         user.setRol(request.getRol());
         user.setEspecialidad(request.getEspecialidad());
         
-        // Lo dejamos en true para que puedas entrar de una
-        user.setEnabled(true); 
-        
         if (request.getRol() == Rol.PACIENTE) {
+            // 👇 AHORA NACE APAGADO, DEBE VALIDAR SÍ O SÍ
+            user.setEnabled(false); 
             String token = UUID.randomUUID().toString();
             user.setVerificationCode(token);
             usuarioRepository.save(user);
 
-            // Manda un mail de bienvenida real
             String link = "https://turnos-frontend-khaki.vercel.app?verifyToken=" + token;
-            emailService.sendEmail(request.getUsername(), "Bienvenido a Clínica Integral",
-                    "Hola " + request.getNombreCompleto() + ",\n\nTu cuenta fue creada con éxito. Ya podés iniciar sesión o hacer clic aquí para verificar tu correo: " + link);
+            emailService.sendEmail(request.getUsername(), "Verifica tu cuenta - Clínica Integral",
+                    "Hola " + request.getNombreCompleto() + ",\n\nBienvenido a Clínica Integral. Para activar tu cuenta de paciente y poder solicitar turnos, ingresa a este enlace:\n\n" + link);
             
-            return ResponseEntity.ok("Registro exitoso. Ya puedes iniciar sesión.");
+            return ResponseEntity.ok("Registro exitoso. Revisa tu email para activar la cuenta.");
         } else {
+            user.setEnabled(true); 
             usuarioRepository.save(user);
             return ResponseEntity.ok("Usuario " + request.getRol() + " creado y activado correctamente.");
         }
@@ -115,7 +114,6 @@ public class AuthController {
         usuario.setResetTokenExpiry(LocalDateTime.now().plusHours(1));
         usuarioRepository.save(usuario);
 
-        // 👇 ENVÍO DE EMAIL DE RECUPERACIÓN ACTIVADO
         String link = "https://turnos-frontend-khaki.vercel.app/?token=" + token;
         emailService.sendEmail(email, "Recuperar Contraseña", "Para cambiar tu contraseña, haz clic en el siguiente enlace:\n\n" + link);
         

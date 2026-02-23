@@ -21,11 +21,10 @@ public class RecordatorioService {
         this.emailService = emailService;
     }
 
-    // Ejecuta cada 1 minuto para que lo pruebes ahora mismo.
-    // Cuando termines de probar, podés cambiarlo a: @Scheduled(cron = "0 0 8 * * ?")
-    @Scheduled(fixedRate = 60000)
+    // 👇 AHORA SE EJECUTA SOLO UNA VEZ AL DÍA A LAS 8:00 AM
+    @Scheduled(cron = "0 0 8 * * ?") 
     public void enviarRecordatoriosDiarios() {
-        System.out.println("⏳ [CRON] Buscando turnos para enviar recordatorios...");
+        System.out.println("⏳ [CRON] Ejecutando tarea diaria de recordatorios (8:00 AM)...");
 
         LocalDate manana = LocalDate.now().plusDays(1);
         LocalDateTime inicioDia = manana.atStartOfDay();
@@ -50,10 +49,9 @@ public class RecordatorioService {
                         + "Especialidad: " + turno.getEspecialidad() + "\n"
                         + "Motivo: " + turno.getDescripcion() + "\n\n"
                         + "Por favor, recordá asistir 10 minutos antes a la clínica.\n\n"
-                        + "Saludos,\nTu Asistente Virtual de Clínica Integral.";
+                        + "Saludos,\nClínica Integral.";
 
                 try {
-                    // MANDA EL CORREO REAL
                     emailService.sendEmail(emailPaciente, asunto, mensaje);
                     System.out.println("✅ Recordatorio enviado con éxito a: " + emailPaciente);
                 } catch (Exception e) {
