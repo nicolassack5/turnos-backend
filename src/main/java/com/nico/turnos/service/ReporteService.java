@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -39,7 +40,7 @@ public class ReporteService {
         this.turnoRepository = turnoRepository;
     }
 
-    // --- 1. GENERAR PDF CON IA ---
+    // --- 1. GENERAR PDF LIMPIO (Sin IA y con fecha formateada) ---
     public byte[] generarReporteTurno(Turno turno) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document document = new Document(PageSize.A4);
@@ -47,22 +48,27 @@ public class ReporteService {
             document.open();
 
             Font fontTitulo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 20);
-            Paragraph titulo = new Paragraph("CLÍNICA INTEGRAL - Comprobante", fontTitulo);
+            Paragraph titulo = new Paragraph("CLÍNICA INTEGRAL - Reporte Médico", fontTitulo);
             titulo.setAlignment(Element.ALIGN_CENTER);
             document.add(titulo);
             document.add(new Paragraph("\n"));
 
-            document.add(new Paragraph("Paciente: " + turno.getCliente()));
-            document.add(new Paragraph("Médico: " + turno.getNombreMedico()));
-            document.add(new Paragraph("Fecha: " + turno.getFechaHora().toString()));
-            document.add(new Paragraph("Descripción: " + turno.getDescripcion()));
+            // Formatear la fecha para sacar la 'T'
+            String fechaFormateada = turno.getFechaHora().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
 
-            try {
-                String consejo = geminiService.preguntarAGemini("Dame un consejo corto de salud para un paciente que consultó por: " + turno.getDescripcion());
-                document.add(new Paragraph("\nNota del Asistente Virtual:"));
-                document.add(new Paragraph(consejo));
-            } catch (Exception e) {
-                document.add(new Paragraph("\nAsistente temporalmente no disponible."));
+            document.add(new Paragraph("Paciente: " + turno.getCliente()));
+            document.add(new Paragraph("Médico: Dr. " + turno.getNombreMedico()));
+            document.add(new Paragraph("Fecha y Hora: " + fechaFormateada + " hs"));
+            document.add(new Paragraph("Motivo de la consulta: " + turno.getDescripcion()));
+            document.add(new Paragraph("\n"));
+
+            // 👇 CORREGIDO: Usamos isAsistio()
+            if (turno.isAsistio()) {
+                document.add(new Paragraph("Diagnóstico y Evolución:"));
+                String diagnostico = turno.getDiagnostico() != null && !turno.getDiagnostico().isEmpty() 
+                                    ? turno.getDiagnostico() 
+                                    : "Sin notas adicionales.";
+                document.add(new Paragraph(diagnostico));
             }
 
             document.close();
@@ -75,12 +81,12 @@ public class ReporteService {
     // --- 2. GENERAR EXCEL ---
     public ByteArrayInputStream generarExcelCompleto() throws IOException {
         String[] columnasUsuarios = {"ID", "Nombre Completo", "DNI", "Rol", "Email"};
-        String[] columnasTurnos = {"ID", "Fecha y Hora", "Paciente", "Médico", "Motivo", "Asistió"};
+        String[] columnasTurnos = {"ID", "Fecha y Hora", "Paciente", "Médico", "Motivo", "Asistio"};
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             
             // --- PESTAÑA 1: USUARIOS ---
-            Sheet sheetUsuarios = workbook.createSheet("Pacientes y Médicos");
+            Sheet sheetUsuarios = workbook.createSheet("Pacientes y Medicos");
             Row headerRow = sheetUsuarios.createRow(0);
             
             for (int i = 0; i < columnasUsuarios.length; i++) {
@@ -116,6 +122,7 @@ public class ReporteService {
                 row.createCell(2).setCellValue(t.getCliente() != null ? t.getCliente() : "");
                 row.createCell(3).setCellValue(t.getNombreMedico() != null ? t.getNombreMedico() : "");
                 row.createCell(4).setCellValue(t.getDescripcion() != null ? t.getDescripcion() : "");
+                // 👇 CORREGIDO: Usamos isAsistio()
                 row.createCell(5).setCellValue(t.isAsistio() ? "Sí" : "No");
             }
 
