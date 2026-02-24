@@ -172,4 +172,4 @@ public class TurnoService {
             System.err.println("Error enviando email de confirmación: " + e.getMessage());
         }
     }
-}
+} 

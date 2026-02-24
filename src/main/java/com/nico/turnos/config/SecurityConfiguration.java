@@ -34,7 +34,8 @@ public class SecurityConfiguration {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Aseguramos que use nuestra config
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**", "/h2-console/**", "/chat/**", "/uploads/**").permitAll()
+                // 👇 ACÁ AGREGAMOS "/health" A LA LISTA DE PERMITIDOS
+                .requestMatchers("/auth/**", "/h2-console/**", "/chat/**", "/uploads/**", "/health").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
             )
